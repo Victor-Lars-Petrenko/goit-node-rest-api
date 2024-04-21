@@ -3,6 +3,7 @@ import HttpError from "../helpers/HttpError.js";
 import {
   createContactSchema,
   updateContactSchema,
+  updateStatusContactSchema,
 } from "../schemas/contactsSchemas.js";
 
 import {
@@ -11,6 +12,7 @@ import {
   listContacts,
   removeContact,
   modifyContact,
+  modifyStatusContact,
 } from "../services/contactsServices.js";
 
 export const getAllContacts = async (req, res, next) => {
@@ -71,6 +73,22 @@ export const updateContact = async (req, res, next) => {
       throw HttpError(400, error.message);
     }
     const updatedContact = await modifyContact(req.params.id, req.body);
+    if (!updatedContact) {
+      throw HttpError(404);
+    }
+    res.status(200).json(updatedContact);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateStatusContact = async (req, res, next) => {
+  try {
+    const { error } = updateStatusContactSchema.validate(req.body);
+    if (error) {
+      throw HttpError(400, error.message);
+    }
+    const updatedContact = await modifyStatusContact(req.params.id, req.body);
     if (!updatedContact) {
       throw HttpError(404);
     }
