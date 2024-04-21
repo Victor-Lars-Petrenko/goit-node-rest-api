@@ -1,48 +1,16 @@
-import fs from "fs/promises";
-import { nanoid } from "nanoid";
-import path from "path";
+import { Contact } from "../models/Contact.js";
 
-const contactsPath = path.resolve("db", "contacts.json");
+export const listContacts = () => Contact.find({});
 
-async function formatContacts(contacts) {
-  await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
-}
+export const getContactById = (contactId) => Contact.findById(contactId);
 
-export async function listContacts() {
-  const contacts = await fs.readFile(contactsPath);
-  return JSON.parse(contacts);
-}
+export const removeContact = (contactId) =>
+  Contact.findByIdAndDelete(contactId);
 
-export async function getContactById(contactId) {
-  const contacts = await listContacts();
-  return contacts.find(({ id }) => id === contactId) || null;
-}
+export const addContact = (contactInfo) => Contact.create(contactInfo);
 
-export async function removeContact(contactId) {
-  const contacts = await listContacts();
-  const deleteIdx = contacts.findIndex(({ id }) => id === contactId);
-  if (deleteIdx === -1) return null;
-  const [result] = contacts.splice(deleteIdx, 1);
-  await formatContacts(contacts);
-  return result;
-}
+export const modifyContact = (contactId, contactNewInfo) =>
+  Contact.findByIdAndUpdate(contactId, contactNewInfo);
 
-export async function addContact(contactInfo) {
-  const contacts = await listContacts();
-  const newContact = { id: nanoid(), ...contactInfo };
-  contacts.push(newContact);
-  await formatContacts(contacts);
-  return newContact;
-}
-
-export async function modifyContact(contactId, contactNewInfo) {
-  const contactToUpdate = await getContactById(contactId);
-  if (!contactToUpdate) {
-    return null;
-  }
-  const contacts = await listContacts();
-  const newContact = { ...contactToUpdate, ...contactNewInfo };
-  contacts.push(newContact);
-  await formatContacts(contacts);
-  return newContact;
-}
+export const modifyStatusContact = (contactId, newStatus) =>
+  Contact.findByIdAndUpdate(contactId, newStatus);
