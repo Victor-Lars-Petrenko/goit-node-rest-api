@@ -11,7 +11,7 @@ import {
 
 import { authenticate } from "../middlewares/authenticate.js";
 
-import { upload } from "../middlewares/upload.js";
+import upload from "../middlewares/upload.js";
 
 const authRouter = express.Router();
 

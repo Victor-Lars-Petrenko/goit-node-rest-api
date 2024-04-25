@@ -4,7 +4,6 @@ import gravatar from "gravatar";
 import path from "path";
 import fs from "fs/promises";
 import Jimp from "jimp";
-import { fileURLToPath } from "url";
 
 import HttpError from "../helpers/HttpError.js";
 
@@ -18,10 +17,7 @@ import { findUser, signup, updateUser } from "../services/authServices.js";
 
 const { JWT_SECRET } = process.env;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+const avatarsDir = path.resolve("public", "avatars");
 
 export const register = async (req, res, next) => {
   try {
@@ -121,16 +117,15 @@ export const updateUserAvatar = async (req, res, next) => {
   try {
     const { _id } = req.user;
     if (!req.file) {
-      throw HttpError(400, "Not found");
+      throw HttpError(400, "Image is not found");
     }
     const { path: tempUpload, originalname } = req.file;
 
     try {
       const image = await Jimp.read(tempUpload);
-      await image.resize(250, 250);
-      await image.writeAsync(tempUpload);
+      await image.resize(250, 250).writeAsync(tempUpload);
     } catch (error) {
-      throw HttpError(500, "Server error");
+      throw HttpError(500, "File writing error");
     }
 
     const filename = `${_id}_${originalname}`;
