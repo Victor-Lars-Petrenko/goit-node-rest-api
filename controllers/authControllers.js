@@ -1,5 +1,12 @@
-import HttpError from "../helpers/HttpError.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import gravatar from "gravatar";
+import path from "path";
+import fs from "fs/promises";
+import Jimp from "jimp";
+import { fileURLToPath } from "url";
+
+import HttpError from "../helpers/HttpError.js";
 
 import {
   userSigninSchema,
@@ -10,7 +17,11 @@ import {
 import { findUser, signup, updateUser } from "../services/authServices.js";
 
 const { JWT_SECRET } = process.env;
-import jwt from "jsonwebtoken";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
 
 export const register = async (req, res, next) => {
   try {
@@ -25,8 +36,10 @@ export const register = async (req, res, next) => {
       throw HttpError(409, "Email in use");
     }
 
+    const avatarURL = gravatar.url(email);
+
     const hashed = await bcrypt.hash(password, 10);
-    const newUser = await signup({ ...req.body, password: hashed });
+    const newUser = await signup({ ...req.body, password: hashed, avatarURL });
 
     res.status(201).json({
       user: {
@@ -99,6 +112,36 @@ export const updateUserSubscription = async (req, res, next) => {
     const updatedUser = await updateUser({ email: emailToFind }, req.body);
     const { email, subscription } = updatedUser;
     res.status(200).json({ user: { email, subscription } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserAvatar = async (req, res, next) => {
+  try {
+    const { _id } = req.user;
+    if (!req.file) {
+      throw HttpError(400, "Not found");
+    }
+    const { path: tempUpload, originalname } = req.file;
+
+    try {
+      const image = await Jimp.read(tempUpload);
+      await image.resize(250, 250);
+      await image.writeAsync(tempUpload);
+    } catch (error) {
+      throw HttpError(500, "Server error");
+    }
+
+    const filename = `${_id}_${originalname}`;
+    const resultUpload = path.join(avatarsDir, filename);
+    await fs.rename(tempUpload, resultUpload);
+    const avatarURL = path.join("avatars", filename);
+    await updateUser({ _id }, { avatarURL });
+
+    res.json({
+      avatarURL,
+    });
   } catch (error) {
     next(error);
   }
