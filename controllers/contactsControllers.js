@@ -8,17 +8,23 @@ import {
 
 import {
   addContact,
-  getContactById,
+  getContactByFilter,
   listContacts,
   removeContact,
   modifyContact,
   modifyStatusContact,
+  countContacts,
 } from "../services/contactsServices.js";
 
 export const getAllContacts = async (req, res, next) => {
   try {
-    const allContacts = await listContacts();
-    res.status(200).json(allContacts);
+    const { _id: owner } = req.user;
+    const { page = 1, limit = 10, favourite } = req.query;
+    const skip = (page - 1) * limit;
+    const filter = Boolean(favourite) ? { owner, favourite } : { owner };
+    const allContacts = await listContacts(filter, { skip, limit });
+    const total = await countContacts(filter);
+    res.status(200).json({ allContacts, total });
   } catch (error) {
     next(error);
   }
@@ -26,8 +32,9 @@ export const getAllContacts = async (req, res, next) => {
 
 export const getOneContact = async (req, res, next) => {
   try {
+    const { _id: owner } = req.user;
     const { id } = req.params;
-    const oneContact = await getContactById(id);
+    const oneContact = await getContactByFilter({ owner, _id: id });
     if (!oneContact) {
       throw HttpError(404);
     }
@@ -39,8 +46,9 @@ export const getOneContact = async (req, res, next) => {
 
 export const deleteContact = async (req, res, next) => {
   try {
+    const { _id: owner } = req.user;
     const { id } = req.params;
-    const deletedContact = await removeContact(id);
+    const deletedContact = await removeContact({ owner, _id: id });
     if (!deletedContact) {
       throw HttpError(404);
     }
@@ -56,7 +64,8 @@ export const createContact = async (req, res, next) => {
     if (error) {
       throw HttpError(400, error.message);
     }
-    const newContact = await addContact(req.body);
+    const { _id: owner } = req.user;
+    const newContact = await addContact({ ...req.body, owner });
     res.status(201).json(newContact);
   } catch (error) {
     next(error);
@@ -72,7 +81,9 @@ export const updateContact = async (req, res, next) => {
     if (error) {
       throw HttpError(400, error.message);
     }
-    const updatedContact = await modifyContact(req.params.id, req.body);
+    const { _id: owner } = req.user;
+    const { id } = req.params;
+    const updatedContact = await modifyContact({ owner, _id: id }, req.body);
     if (!updatedContact) {
       throw HttpError(404);
     }
@@ -88,7 +99,12 @@ export const updateStatusContact = async (req, res, next) => {
     if (error) {
       throw HttpError(400, error.message);
     }
-    const updatedContact = await modifyStatusContact(req.params.id, req.body);
+    const { _id: owner } = req.user;
+    const { id } = req.params;
+    const updatedContact = await modifyStatusContact(
+      { owner, _id: id },
+      req.body
+    );
     if (!updatedContact) {
       throw HttpError(404);
     }
