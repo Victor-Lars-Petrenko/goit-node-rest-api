@@ -4,18 +4,21 @@ import gravatar from "gravatar";
 import path from "path";
 import fs from "fs/promises";
 import Jimp from "jimp";
+import { nanoid } from "nanoid";
 
 import HttpError from "../helpers/HttpError.js";
+import sendEmail from "../helpers/sendEmail.js";
 
 import {
   userSigninSchema,
   userSignupSchema,
   updateSubscriptionSchema,
+  userEmailSchema,
 } from "../schemas/usersSchemas.js";
 
 import { findUser, signup, updateUser } from "../services/authServices.js";
 
-const { JWT_SECRET } = process.env;
+const { JWT_SECRET, PROJECT_URL } = process.env;
 
 const avatarsDir = path.resolve("public", "avatars");
 
@@ -35,7 +38,23 @@ export const register = async (req, res, next) => {
     const avatarURL = gravatar.url(email);
 
     const hashed = await bcrypt.hash(password, 10);
-    const newUser = await signup({ ...req.body, password: hashed, avatarURL });
+
+    const verificationToken = nanoid();
+
+    const newUser = await signup({
+      ...req.body,
+      password: hashed,
+      avatarURL,
+      verificationToken,
+    });
+
+    const verifyEmail = {
+      to: email,
+      subject: "Verify email",
+      html: `<a target="_blank" href="${PROJECT_URL}api/users/verify/${verificationToken}">Click to verify</a>`,
+    };
+
+    await sendEmail(verifyEmail);
 
     res.status(201).json({
       user: {
@@ -59,6 +78,10 @@ export const login = async (req, res, next) => {
     const user = await findUser({ email });
     if (!user) {
       throw HttpError(401, "Email or password is wrong");
+    }
+
+    if (!user.verify) {
+      throw HttpError(401, "Email is not verified");
     }
 
     const passwordCompare = await bcrypt.compare(password, user.password);
@@ -117,7 +140,7 @@ export const updateUserAvatar = async (req, res, next) => {
   try {
     const { _id } = req.user;
     if (!req.file) {
-      throw HttpError(400, "Image is not found");
+      throw HttpError(400, "Image not found");
     }
     const { path: tempUpload, originalname } = req.file;
 
@@ -137,6 +160,52 @@ export const updateUserAvatar = async (req, res, next) => {
     res.json({
       avatarURL,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verify = async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+    const user = await findUser({ verificationToken });
+    if (!user) {
+      throw HttpError(404, "User not found");
+    }
+    await updateUser(
+      { _id: user._id },
+      { verify: true, verificationToken: null }
+    );
+    res.status(200).json({ message: "Verification successful" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendVerify = async (req, res, next) => {
+  try {
+    const { error } = userEmailSchema.validate(req.body);
+    if (error) {
+      throw HttpError(400, "missing required field email");
+    }
+    const { email } = req.body;
+    const user = await findUser({ email });
+    if (!user) {
+      throw HttpError(404, "Email not found");
+    }
+    if (user.verify) {
+      throw HttpError(400, "Verification has already been passed");
+    }
+
+    const verifyEmail = {
+      to: email,
+      subject: "Verify email",
+      html: `<a target="_blank" href="${PROJECT_URL}api/users/verify/${user.verificationToken}">Click to verify</a>`,
+    };
+
+    await sendEmail(verifyEmail);
+
+    res.status(200).json({ message: "Verification email sent" });
   } catch (error) {
     next(error);
   }

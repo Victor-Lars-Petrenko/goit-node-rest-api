@@ -7,6 +7,8 @@ import {
   logout,
   updateUserSubscription,
   updateUserAvatar,
+  verify,
+  resendVerify,
 } from "../controllers/authControllers.js";
 
 import { authenticate } from "../middlewares/authenticate.js";
@@ -31,5 +33,9 @@ authRouter.patch(
   upload.single("avatar"),
   updateUserAvatar
 );
+
+authRouter.get("/verify/:verificationToken", verify);
+
+authRouter.post("/verify", resendVerify);
 
 export default authRouter;

@@ -14,3 +14,7 @@ export const updateSubscriptionSchema = Joi.object({
   email: Joi.string().required(),
   subscription: Joi.string().valid("starter", "pro", "business").required(),
 });
+
+export const userEmailSchema = Joi.object({
+  email: Joi.string().required(),
+});
