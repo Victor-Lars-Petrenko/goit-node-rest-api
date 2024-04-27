@@ -51,7 +51,7 @@ export const register = async (req, res, next) => {
     const verifyEmail = {
       to: email,
       subject: "Verify email",
-      html: `<a target="_blank" href="${PROJECT_URL}api/users/verify/${verificationToken}">Click to verify</a>`,
+      html: `<a target="_blank" href="${PROJECT_URL}/api/users/verify/${verificationToken}">Click to verify</a>`,
     };
 
     await sendEmail(verifyEmail);
@@ -200,7 +200,7 @@ export const resendVerify = async (req, res, next) => {
     const verifyEmail = {
       to: email,
       subject: "Verify email",
-      html: `<a target="_blank" href="${PROJECT_URL}api/users/verify/${user.verificationToken}">Click to verify</a>`,
+      html: `<a target="_blank" href="${PROJECT_URL}/api/users/verify/${user.verificationToken}">Click to verify</a>`,
     };
 
     await sendEmail(verifyEmail);
